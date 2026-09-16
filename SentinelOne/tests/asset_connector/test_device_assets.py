@@ -108,6 +108,38 @@ def sample_agent():
     )
 
 
+def test_fetch_agents_uses_updated_at_checkpoint_and_filter(test_sentinelone_device_asset_connector, sample_agent):
+    """The connector must filter and checkpoint on updatedAt, not createdAt, so that
+    updates to already-synced agents (IP, user, agent version, group, security status, etc.)
+    are picked up on subsequent runs, instead of only newly created agents."""
+    # Arrange: an agent whose createdAt is old but whose updatedAt just changed.
+    updated_agent = sample_agent.model_copy()
+    updated_agent.createdAt = "2018-02-27T04:49:26.257525Z"
+    updated_agent.updatedAt = "2024-06-01T00:00:00.000000Z"
+
+    mock_response = {
+        "data": [updated_agent.model_dump()],
+        "errors": None,
+        "pagination": {"nextCursor": None},
+    }
+    test_sentinelone_device_asset_connector._client_mock.get.return_value = mock_response
+
+    with patch.object(test_sentinelone_device_asset_connector, "context") as mock_context:
+        mock_context.__enter__.return_value = {"most_recent_date_seen": "2020-01-01T00:00:00.000000Z"}
+        agents, _ = test_sentinelone_device_asset_connector.fetch_agents()
+
+    # Assert: the filter sent to SentinelOne must be based on updatedAt, so that agents
+    # updated after the checkpoint (even if created long before) are fetched.
+    called_params = test_sentinelone_device_asset_connector._client_mock.get.call_args.kwargs["params"]
+    assert "updatedAt__gt" in called_params
+    assert "createdAt__gt" not in called_params
+
+    # Assert: the checkpoint stored for the next run must reflect updatedAt, not createdAt,
+    # otherwise updates to existing agents are silently ignored forever.
+    assert test_sentinelone_device_asset_connector.new_most_recent_date == updated_agent.updatedAt
+    assert len(agents) == 1
+
+
 # Tests for fetch_agents method
 def test_fetch_agents_success(test_sentinelone_device_asset_connector, sample_agent):
     """Test successful agent fetching."""
