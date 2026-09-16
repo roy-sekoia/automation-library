@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fix SentinelOne Device Asset Connector never refreshing existing assets: the checkpoint/filter now uses `updatedAt` instead of `createdAt`, so attribute changes (IP, user, agent version, group, security status) on already-synced agents are picked up. Results are now sorted ascending by `updatedAt` to avoid skipping agents whose value changes mid-pagination.
+
 ## 2026-09-14 - 1.23.3
 
 ### Changed

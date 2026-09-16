@@ -100,21 +100,21 @@ class SentinelOneDeviceAssetConnector(AssetConnector):
         except Exception as e:
             self.log(f"Failed to update checkpoint: {str(e)}", level="error")
 
-    def get_last_created_date(self, agents: list[SentinelOneAgent]) -> str:
-        """Get the last created date from the list of agents.
+    def get_last_updated_date(self, agents: list[SentinelOneAgent]) -> str:
+        """Get the last updated date from the list of agents.
 
         Args:
             agents: List of SentinelOne agents.
 
         Returns:
-            The last created date as a string.
+            The last updated date as a string.
 
         Raises:
             ValueError: If the agents list is empty.
         """
         if not agents:
-            raise ValueError("Cannot get last created date from empty agents list")
-        return max(agent.createdAt for agent in agents)
+            raise ValueError("Cannot get last updated date from empty agents list")
+        return max(agent.updatedAt for agent in agents)
 
     def fetch_agents(self, cursor: str | None = None) -> tuple[list[SentinelOneAgent], str | None]:
         """Fetch agents from SentinelOne.
@@ -130,7 +130,12 @@ class SentinelOneDeviceAssetConnector(AssetConnector):
             params: dict[str, Any] = {"limit": 100}
 
             if self.most_recent_date_seen:
-                params["createdAt__gt"] = self.most_recent_date_seen
+                params["updatedAt__gt"] = self.most_recent_date_seen
+
+            # Sort ascending on updatedAt so the checkpoint (max updatedAt seen) never
+            # skips agents whose updatedAt changes while paginating through results.
+            params["sortBy"] = "updatedAt"
+            params["sortOrder"] = "asc"
 
             if cursor:
                 params["cursor"] = cursor
@@ -152,7 +157,7 @@ class SentinelOneDeviceAssetConnector(AssetConnector):
 
             # Update checkpoint with the most recent date
             if agents:
-                self.new_most_recent_date = self.get_last_created_date(agents)
+                self.new_most_recent_date = self.get_last_updated_date(agents)
 
             # Get next cursor from pagination
             next_cursor = None
