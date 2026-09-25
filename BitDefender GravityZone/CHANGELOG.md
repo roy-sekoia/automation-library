@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 2025-08-26 - [1.0.7]
+
+### Fixed
+- Declare `api_key` as a secret in the manifest so it is masked in the account configuration UI.
+
 ## 2025-08-26 - [1.0.6]
 
 ### Fixed
